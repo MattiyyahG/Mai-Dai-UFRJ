@@ -2,12 +2,17 @@
 
 #include <PubSubClient.h>
 
+#include <DHTesp.h>
+
 const char* ssid = "wPESC-Visitante"; // Wifi
 
 const char* password = ""; //Senha
 
 const char* mqtt_server = "test.mosquitto.org"; //Broker
 
+const int DHT_PIN = 15;
+
+DHTesp dhtSensor;
 
 WiFiClient espClient; //Configurações do cliente
 
@@ -15,11 +20,13 @@ PubSubClient client(espClient);
 
 unsigned long lastMsg = 0;
 
-#define MSG_BUFFER_SIZE	(50)  //Definindo o tamanho da mensagem que pode chegar no broker, só aumentar dps
+#define MSG_BUFFER_SIZE	(100)  //Definindo o tamanho da mensagem que pode chegar no broker, só aumentar dps
 
 char msg[MSG_BUFFER_SIZE];
 
 int value = 0;
+
+float umi = 0.0;
 
 
 void setup_wifi() {
@@ -89,7 +96,7 @@ void reconnect() { // Função para reconexão de rede
 
       Serial.println("Conectado!");
 
-      client.subscribe(""); // Tópico definido
+      client.subscribe("MaiDai/Uva/secao1"); // Tópico definido
 
     } else {
 
@@ -115,6 +122,8 @@ void setup() {
 
   client.setCallback(callback);
 
+  dhtSensor.setup(DHT_PIN, DHTesp::DHT22);
+
 }
 
 void loop() {
@@ -129,15 +138,22 @@ void loop() {
 
   unsigned long now = millis();
 
+  TempAndHumidity  data = dhtSensor.getTempAndHumidity();
+
+  int umidade = data.humidity;
+
+  delay(2000);
+
+
   if (now - lastMsg > 2000) {
 
     lastMsg = now;
 
-    snprintf (msg, MSG_BUFFER_SIZE, " ", ); // <-------------------- Mensagem que será enviada para o broker 
+    snprintf (msg, MSG_BUFFER_SIZE, "Umidade: %ld", umidade); // <-------------------- Mensagem que será enviada para o broker
 
     Serial.println(msg);
 
-    client.publish("", msg);
+    client.publish("MaiDai/Uva/secao1", msg);
 
     delay(1000);
 
