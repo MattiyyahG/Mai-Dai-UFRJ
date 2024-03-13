@@ -27,9 +27,6 @@ char msg[MSG_BUFFER_SIZE];
 
 int value = 0;
 
-float umi = 0.0;
-
-
 void setup_wifi() {
 
   delay(10);
@@ -141,16 +138,14 @@ void loop() {
 
   TempAndHumidity  data = dhtSensor.getTempAndHumidity();
 
-  int umidade = data.humidity;
-
-  delay(2000);
+  delay(1000);
 
 
   if (now - lastMsg > 2000) {
 
     lastMsg = now;
 
-    snprintf (msg, MSG_BUFFER_SIZE, "{U: %ld, ID: %d}", umidade, 1); // <-------------------- Mensagem que será enviada para o broker
+    snprintf (msg, MSG_BUFFER_SIZE, "{U(%%): %.1f, ID: %d}", data.humidity, 1); // <-------------------- Mensagem que será enviada para o broker
 
     Serial.println(msg);
 
