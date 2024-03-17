@@ -1,3 +1,4 @@
+//sudo chmod a+rw /dev/ttyUSB0
 #include <ESP8266WiFi.h>
 
 #include <PubSubClient.h>
@@ -10,7 +11,7 @@ const char* password = ""; //Senha
 
 const char* mqtt_server = "test.mosquitto.org"; //Broker
 
-const int DHT_PIN = 15;
+const int DHT_PIN = D0;
 
 DHTesp dhtSensor;
 
@@ -25,9 +26,6 @@ unsigned long lastMsg = 0;
 char msg[MSG_BUFFER_SIZE];
 
 int value = 0;
-
-float umi = 0.0;
-
 
 void setup_wifi() {
 
@@ -140,20 +138,18 @@ void loop() {
 
   TempAndHumidity  data = dhtSensor.getTempAndHumidity();
 
-  int umidade = data.humidity;
-
-  delay(2000);
+  delay(1000);
 
 
   if (now - lastMsg > 2000) {
 
     lastMsg = now;
 
-    snprintf (msg, MSG_BUFFER_SIZE, "Umidade: %ld", umidade); // <-------------------- Mensagem que será enviada para o broker
+    snprintf (msg, MSG_BUFFER_SIZE, "{U(%%): %.1f, ID: %d}", data.humidity, 1); // <-------------------- Mensagem que será enviada para o broker
 
     Serial.println(msg);
 
-    client.publish("MaiDai/Uva/secao1", msg);
+    client.publish("MaiDai/Uva", msg);
 
     delay(1000);
 
