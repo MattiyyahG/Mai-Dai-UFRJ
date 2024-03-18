@@ -28,7 +28,7 @@ def connect(client, flags, rc , properties):
     print("Conectado: ", client, flags, rc, properties)
 
 @mqtt.on_message()
-async def message(client, topic, payload, qos , properties):
+async def message(client, topic, payload, qos, properties):
     print(f"Mensagem recebida: ", topic, payload.decode(), qos, properties)
     return 0
 
@@ -48,7 +48,7 @@ async def message_to_topic(client, topic, payload, qos, properties):
 async def func():
     mqtt.publish("MaiDai/Uva", "teste")
 
-    return {"resultado": True, "Testando": "testando TESTE"}
+    return {"resultado": "message"}
 
 
 '''
@@ -56,5 +56,4 @@ async def func():
 def read_item(item_id: int, q: Union[str, None] = None):
     return {"item_id": item_id, "q": q}
 '''
-
 
