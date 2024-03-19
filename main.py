@@ -1,10 +1,17 @@
+#.\venv\scripts\activate
+#uvicorn main:app --reload
+
 from typing import Union
 
 from fastapi import FastAPI
 
 from fastapi_mqtt import FastMQTT, MQTTConfig
 
+from routes.routes import endPoints
+
 app = FastAPI()
+
+app.include_router(endPoints)
 
 mqtt_config = MQTTConfig(
     host = "test.mosquitto.org",
@@ -21,6 +28,11 @@ mqtt = FastMQTT(
 
 mqtt.init_app(app)
 
+@endPoints.get("/")
+def home():
+    return{
+
+    }
 
 @mqtt.on_connect()
 def connect(client, flags, rc , properties):
@@ -29,7 +41,8 @@ def connect(client, flags, rc , properties):
 
 @mqtt.on_message()
 async def message(client, topic, payload, qos, properties):
-    print(f"Mensagem recebida: ", topic, payload.decode(), qos, properties)
+
+    print(f"Mensagem recebida: ", topic, payload.decode(), qos)
     return 0
 
 @mqtt.on_disconnect()
@@ -37,7 +50,7 @@ def disconnect(client, packet, exc=None):
     print("Desconectado")
 
 @mqtt.on_subscribe()
-def subscribe(client, mid, qos , properties):
+def subscribe(client, mid, qos, properties):
     print("Inscrito", client, mid, qos , properties)
   
 @mqtt.subscribe("MaiDai/Uva")
@@ -49,7 +62,6 @@ async def func():
     mqtt.publish("MaiDai/Uva", "teste")
 
     return {"resultado": "message"}
-
 
 '''
 @app.get("/items/{item_id}")
