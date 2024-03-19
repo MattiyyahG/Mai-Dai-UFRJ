@@ -42,8 +42,12 @@ def connect(client, flags, rc , properties):
 @mqtt.on_message()
 async def message(client, topic, payload, qos, properties):
 
-    print(f"Mensagem recebida: ", topic, payload.decode(), qos)
+    data = topic, payload.decode(encoding='UTF-8'), qos
+
+    print(f"Mensagem recebida: ", data)
+
     return 0
+
 
 @mqtt.on_disconnect()
 def disconnect(client, packet, exc=None):
