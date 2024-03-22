@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 from config.config import maidaiCollection
-from model.model import uva
-from serializer.serializer import convertdb_uva, convertUva
+from Dump.model import uva
+from Dump.serializer import convertdb_uva, convertUva
 from bson import ObjectId
 
 endPoints = APIRouter()
