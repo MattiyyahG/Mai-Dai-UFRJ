@@ -9,10 +9,10 @@ endPoints = APIRouter()
 @endPoints.get("/all/db_uva")
 def getAllDb_uva():
     db_uva = maidaiCollection.find()
-    convertdb_uva = convertdb_uva(db_uva)
+    converteddb_uva = convertdb_uva(db_uva)
     return {
         "status": "Ok",
-        "data" : convertdb_uva
+        "data" : converteddb_uva
     }
 
 @endPoints.get("/uva/{id}")
