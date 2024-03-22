@@ -9,6 +9,20 @@ from fastapi_mqtt import FastMQTT, MQTTConfig
 
 from routes.routes import endPoints
 
+from motor.motor_asyncio import AsyncIOMotorClient
+
+from model.model import uva
+
+import json
+
+MONGO_URL = "mongodb+srv://maidai:123maidai456@maidai.e3qdm2x.mongodb.net/?retryWrites=true&w=majority&appName=MaiDai"
+
+client = AsyncIOMotorClient(MONGO_URL)
+
+database = client["MaiDai"]
+
+collection = database["c_Uva"]
+
 app = FastAPI()
 
 app.include_router(endPoints)
@@ -42,11 +56,16 @@ def connect(client, flags, rc , properties):
 @mqtt.on_message()
 async def message(client, topic, payload, qos, properties):
 
-    data = topic, payload.decode(encoding='UTF-8'), qos
+    global collection
+
+    #data = topic, payload.decode(encoding='UTF-8'), qos
+
+    data = payload.decode(encoding='UTF-8')
+
+    collection.insert_one( {"topic": topic,"payload" : data})
 
     print(f"Mensagem recebida: ", data)
 
-    return 0
 
 
 @mqtt.on_disconnect()

@@ -1,5 +1,5 @@
 from main import message
 
-a = message.data()
+a = message
 
-print(a)
+print(message)
