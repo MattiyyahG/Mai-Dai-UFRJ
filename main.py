@@ -51,13 +51,13 @@ def connect(client, flags, rc , properties):
     print("Conectado: ", client, flags, rc, properties)
 
 @mqtt.on_message()
-async def message(client, topic, payload, qos, properties, id):
+async def message(client, topic, payload, qos, properties):
 
     global collection
 
     data = payload.decode(encoding='UTF-8')
 
-    collection.insert_one({"topic": topic, "Umidade(%)" : data, "sensor_id: ": id})
+    collection.insert_one({"topic": topic, "Umidade(%)" : data})
 
     print(f"Mensagem recebida: ", data)
 
