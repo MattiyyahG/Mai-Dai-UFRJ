@@ -84,11 +84,5 @@ async def message_to_topic(client, topic, payload, qos, properties):
 async def func():
     mqtt.publish("MaiDai/Uva", "teste")
 
-    return {"resultado": "message"}
-
-'''
-@app.get("/items/{item_id}")
-def read_item(item_id: int, q: Union[str, None] = None):
-    return {"item_id": item_id, "q": q}
-'''
+    return {"Resultado": "Conectado"}
 
