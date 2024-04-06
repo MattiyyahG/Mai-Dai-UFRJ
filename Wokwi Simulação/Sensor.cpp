@@ -1,0 +1,179 @@
+#include <WiFi.h>
+
+#include <PubSubClient.h>
+
+#include <DHTesp.h>
+
+#include "RTClib.h"
+
+const char* ssid = "Wokwi-GUEST"; // Wifi
+
+const char* password = ""; //Senha
+
+const char* mqtt_server = "test.mosquitto.org"; //Broker
+
+const int DHT_PIN = 15;
+
+DHTesp dhtSensor;
+
+WiFiClient espClient; //Configurações do cliente
+
+PubSubClient client(espClient);
+
+RTC_DS1307 rtc;
+
+unsigned long lastMsg = 0;
+
+#define MSG_BUFFER_SIZE	(500)  //Definindo o tamanho da mensagem que pode chegar no broker, só aumentar dps
+
+char msg[MSG_BUFFER_SIZE];
+
+void setup_wifi() {
+
+  delay(10);
+
+  Serial.println();
+
+  Serial.print("Conectando a ");
+
+  Serial.println(ssid);
+
+  WiFi.mode(WIFI_STA);
+
+  WiFi.begin(ssid, password);
+
+
+  while (WiFi.status() != WL_CONNECTED) {
+
+    delay(500);
+
+    Serial.print(".");
+
+  }
+
+  randomSeed(micros());
+
+  Serial.println("");
+
+  Serial.println("Conectado!");
+
+  Serial.println("Endereço IP ");
+
+  Serial.println(WiFi.localIP());
+
+}
+
+void callback(char* topic, byte* payload, unsigned int length) { //Toda vez que uma mensagem chegar no broker, sera enviado uma mensagem de confirmação no serial e em qual tópico chegou, pode remover sem nenhum problema
+
+  Serial.print("Mensagem Recebida no tópico [");
+
+  Serial.print(topic);
+
+  Serial.print("] ");
+
+  for (int i = 0; i < length; i++) {
+
+    Serial.print((char)payload[i]);
+
+  }
+
+  Serial.println();
+
+}
+
+void reconnect() { // Função para reconexão de rede
+
+  while (!client.connected()) {
+
+    Serial.print("...");
+
+    String clientId = "ESP8266Client-"; //Id do usuario, mudar conforme necessário
+
+    clientId += String(random(0xffff), HEX);
+
+    if (client.connect(clientId.c_str())) {
+
+      Serial.println("Conectado!");
+
+      client.subscribe("MaiDai/Uva"); // Tópico definido
+
+    } else {
+
+      Serial.print("Falha...");
+
+      Serial.print(client.state());
+
+      delay(5000);
+
+    }
+
+  }
+
+}
+
+void setup() {
+
+  Serial.begin(115200);
+
+  setup_wifi();
+
+  client.setServer(mqtt_server, 1883);
+
+  client.setCallback(callback);
+
+  dhtSensor.setup(DHT_PIN, DHTesp::DHT22);
+  
+  if (! rtc.begin()) {
+
+    Serial.flush();
+
+    abort();
+
+  }
+
+  if (! rtc.isrunning()) {
+
+    rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+
+  }
+
+
+}
+
+void loop() {
+  
+  DateTime time = rtc.now();
+
+  if (!client.connected()) {
+
+    reconnect();
+
+  }
+
+  client.loop();
+
+  String coleta_d = String(time.timestamp(DateTime::TIMESTAMP_DATE));
+
+  String coleta_h = String(time.timestamp(DateTime::TIMESTAMP_TIME));
+
+  unsigned long now = millis();
+
+  TempAndHumidity data = dhtSensor.getTempAndHumidity();
+
+  delay(1000);
+
+  if (now - lastMsg > 2000) {
+
+    lastMsg = now;
+
+    snprintf (msg, MSG_BUFFER_SIZE, "%.1f %d %s %s", data.humidity, 1, coleta_d, coleta_h); // <-------------------- Mensagem que será enviada para o broker
+
+    Serial.println(msg);
+
+    client.publish("MaiDai/Uva", msg);
+
+    delay(1000);
+
+  }
+
+}
