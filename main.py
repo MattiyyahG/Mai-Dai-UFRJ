@@ -7,7 +7,6 @@ from fastapi import FastAPI
 
 from fastapi_mqtt import FastMQTT, MQTTConfig
 
-
 from motor.motor_asyncio import AsyncIOMotorClient
 
 
@@ -50,10 +49,12 @@ async def message(client, topic, payload, qos, properties):
 
     data = payload.decode(encoding='UTF-8')
 
-    collection.insert_one({"topic": topic, "Umidade(%)" : data[:5], "ID": data[6]})
+    insert_data = data.split()
 
-    print(f"Mensagem recebida: ", data, "id: ", data[6])
+    collection.insert_one({"Tópico": topic, "Umidade(%)" : insert_data[0], "ID": insert_data[1], "Dia da coleta": insert_data[2], "Horário da coleta": insert_data[3]})
 
+    print(f"Mensagem recebida: ", data, "id: ", insert_data[1])
+   
     return 0
 
 
