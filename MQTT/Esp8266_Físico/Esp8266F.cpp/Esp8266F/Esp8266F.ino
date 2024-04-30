@@ -3,7 +3,14 @@
 
 #include <PubSubClient.h>
 
-#include <DHTesp.h>
+#include <FC28.h>
+
+#include "FS.h"
+
+#include <LittleFS.h>
+
+#include "RTClib.h"
+
 
 const char* ssid = "wPESC-Visitante"; // Wifi
 
@@ -11,21 +18,21 @@ const char* password = ""; //Senha
 
 const char* mqtt_server = "test.mosquitto.org"; //Broker
 
-const int DHT_PIN = D0;
-
-DHTesp dhtSensor;
+FC28 moistureSensor;
 
 WiFiClient espClient; //Configurações do cliente
 
 PubSubClient client(espClient);
 
+RTC_DS1307 rtc;
+
 unsigned long lastMsg = 0;
 
-#define MSG_BUFFER_SIZE	(100)  //Definindo o tamanho da mensagem que pode chegar no broker, só aumentar dps
+#define MSG_BUFFER_SIZE	(500)  //Definindo o tamanho da mensagem que pode chegar no broker, só aumentar dps
 
 char msg[MSG_BUFFER_SIZE];
 
-int value = 0;
+int failCount = 0; // Contador de falhas
 
 void setup_wifi() {
 
@@ -82,6 +89,7 @@ void callback(char* topic, byte* payload, unsigned int length) { //Toda vez que 
 
 void reconnect() { // Função para reconexão de rede
 
+
   while (!client.connected()) {
 
     Serial.print("...");
@@ -94,13 +102,53 @@ void reconnect() { // Função para reconexão de rede
 
       Serial.println("Conectado!");
 
-      client.subscribe("MaiDai/Uva/secao1"); // Tópico definido
+      client.subscribe("MaiDai/Uva"); // Tópico definido
+
+      failCount = 0; // Resetar o contador de falhas após uma conexão bem sucedida
 
     } else {
 
       Serial.print("Falha...");
 
       Serial.print(client.state());
+
+      failCount++; // Incrementar o contador de falhas
+
+      /*if (failCount >= 3) { // Se falhou 3 vezes
+
+        if (!LittleFS.begin()) {
+
+          Serial.println("Falha ao montar o sistema de arquivos LittleFS");
+
+          return;
+
+        }
+
+        File file = LittleFS.open("/data_log.txt", "a"); // Abrir o arquivo em modo de anexação
+
+        if (!file) {
+
+          Serial.println("Falha ao abrir o arquivo para escrita");
+
+          return;
+
+        }
+
+        if (file.println(msg)) { // Escrever no arquivo
+
+          Serial.println("Dados escritos com sucesso");
+
+        } else {
+
+          Serial.println("Falha na escrita");
+
+        }
+
+        file.close();
+
+        failCount = 0; // Resetar o contador de falhas após a escrita bem sucedida
+
+      }*/
 
       delay(5000);
 
@@ -120,36 +168,85 @@ void setup() {
 
   client.setCallback(callback);
 
-  dhtSensor.setup(DHT_PIN, DHTesp::DHT22);
+  moistureSensor.config(A0, 0, 880);
+
+  if (! rtc.begin()) {
+
+    Serial.flush();
+
+    abort();
+
+  }
+
+  if (! rtc.isrunning()) {
+
+    rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+
+  }
 
 }
 
 void loop() {
+  
+  DateTime time = rtc.now();
 
-  if (!client.connected()) {
+    if (!client.connected()) {
 
     reconnect();
 
-  }
+    }
 
   client.loop();
 
+  String coleta_d = String(time.timestamp(DateTime::TIMESTAMP_DATE));
+
+  String coleta_h = String(time.timestamp(DateTime::TIMESTAMP_TIME));
+
   unsigned long now = millis();
 
-  TempAndHumidity  data = dhtSensor.getTempAndHumidity();
+  TempAndHumidity data = dhtSensor.getTempAndHumidity();
 
   delay(1000);
-
 
   if (now - lastMsg > 2000) {
 
     lastMsg = now;
 
-    snprintf (msg, MSG_BUFFER_SIZE, "{U(%%): %.1f, ID: %d}", data.humidity, 1); // <-------------------- Mensagem que será enviada para o broker
+    snprintf (msg, MSG_BUFFER_SIZE, "%.1f %d %s %s", data.humidity, 1, coleta_d, coleta_h); // <-------------------- Mensagem que será enviada para o broker
 
     Serial.println(msg);
 
     client.publish("MaiDai/Uva", msg);
+
+    if (failCount >= 3) {
+
+      if (!LittleFS.begin()) {
+
+        Serial.println("Falha ao montar o sistema de arquivos LittleFS");
+
+        return;
+
+      }
+
+      File file = LittleFS.open("/data_log.txt", "a");
+
+      if (!file) {
+
+        Serial.println("Falha ao abrir o arquivo para escrita");
+
+        return;
+
+      }
+
+      file.println(msg);
+
+      file.close();
+
+      Serial.println("Dados salvos no LittleFS");
+
+      failCount = 0;
+
+    }
 
     delay(1000);
 
