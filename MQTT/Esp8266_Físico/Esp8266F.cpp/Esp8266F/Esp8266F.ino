@@ -1,30 +1,28 @@
 //sudo chmod a+rw /dev/ttyUSB0
 #include <ESP8266WiFi.h>
 
+#include <Wire.h>
+
 #include <PubSubClient.h>
 
-#include <FC28.h>
-
-#include "FS.h"
+//#include <FS.h>
 
 #include <LittleFS.h>
 
-#include "RTClib.h"
+#include <RTClib.h>
 
+const char* ssid = "LENS-ESE"; // Wifi
 
-const char* ssid = "wPESC-Visitante"; // Wifi
-
-const char* password = ""; //Senha
+const char* password = "LensESE*789"; //Senha
 
 const char* mqtt_server = "test.mosquitto.org"; //Broker
 
-FC28 moistureSensor;
 
 WiFiClient espClient; //Configurações do cliente
 
 PubSubClient client(espClient);
 
-RTC_DS1307 rtc;
+RTC_DS3231 rtc;
 
 unsigned long lastMsg = 0;
 
@@ -168,51 +166,64 @@ void setup() {
 
   client.setCallback(callback);
 
-  moistureSensor.config(A0, 0, 880);
-
   if (! rtc.begin()) {
-
-    Serial.flush();
-
-    abort();
-
+    Serial.println("Couldn't find RTC");
+    while (1);
   }
-
-  if (! rtc.isrunning()) {
-
+  
+  if (rtc.lostPower()) {
+    
     rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
-
   }
-
+  
 }
 
 void loop() {
   
-  DateTime time = rtc.now();
+  DateTime now = rtc.now();
 
-    if (!client.connected()) {
+  if (!client.connected()) {
 
-    reconnect();
+  reconnect();
 
-    }
+  }
 
   client.loop();
+//100.0 1 2024-05-02 13:49:32
+  int ano = now.year();
+  int mes = now.month();
+  int dia = now.day();
 
-  String coleta_d = String(time.timestamp(DateTime::TIMESTAMP_DATE));
+  int hor = now.hour();
+  int min = now.minute();
+  int seg = now.second();
 
-  String coleta_h = String(time.timestamp(DateTime::TIMESTAMP_TIME));
+  String data = String(ano) + "-" + String(mes) + "-" + String(dia);
+  String hora = String(hor) + ":" + String(min) + ":" + String(seg);
 
-  unsigned long now = millis();
 
-  TempAndHumidity data = dhtSensor.getTempAndHumidity();
+  String coleta_d = data;
+
+  String coleta_h = hora;
+
+  unsigned long now_a = millis();
+
+  float umidade;
+
+  int sensor_a;
+
+  sensor_a = analogRead(A0);
+  
+  umidade = ( 100 - ( ( sensor_a / 1023.00 ) * 100 ) );
 
   delay(1000);
 
-  if (now - lastMsg > 2000) {
 
-    lastMsg = now;
+  if (now_a - lastMsg > 2000) {
 
-    snprintf (msg, MSG_BUFFER_SIZE, "%.1f %d %s %s", data.humidity, 1, coleta_d, coleta_h); // <-------------------- Mensagem que será enviada para o broker
+    lastMsg = now_a;
+
+    snprintf (msg, MSG_BUFFER_SIZE, "%.1f %d %s %s", umidade, 1, coleta_d, coleta_h); // <-------------------- Mensagem que será enviada para o broker
 
     Serial.println(msg);
 
