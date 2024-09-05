@@ -1,0 +1,29 @@
+services:
+  sensor:
+    build: .
+    container_name: sensor
+    privileged: true  # Necessário para acessar os pinos GPIO
+    deploy:
+#      replicas: 2  # Para executar em dois nós do cluster
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 50M
+    environment:
+      - SENSOR_PIN=17  # GPIO do sensor
+    depends_on:
+      - mqtt-broker
+
+  mqtt-broker:
+    image: eclipse-mosquitto
+    container_name: mqtt-broker
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./mosquitto/config:/mosquitto/config
+      - ./mosquitto/data:/mosquitto/data
+      - ./mosquitto/log:/mosquitto/log
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager  # O broker será executado apenas no nó principal
