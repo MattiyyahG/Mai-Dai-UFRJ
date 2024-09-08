@@ -1,29 +1,33 @@
-services:
-  sensor:
-    build: .
-    container_name: sensor
-    privileged: true  # Necessário para acessar os pinos GPIO
-    deploy:
-#      replicas: 2  # Para executar em dois nós do cluster
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 50M
-    environment:
-      - SENSOR_PIN=17  # GPIO do sensor
-    depends_on:
-      - mqtt-broker
+version: '3.8'
 
-  mqtt-broker:
-    image: eclipse-mosquitto
-    container_name: mqtt-broker
+services:
+  app:
+    build: .
+    container_name: fastapi_app
     ports:
-      - "1883:1883"
-    volumes:
-      - ./mosquitto/config:/mosquitto/config
-      - ./mosquitto/data:/mosquitto/data
-      - ./mosquitto/log:/mosquitto/log
-    deploy:
-      placement:
-        constraints:
-          - node.role == manager  # O broker será executado apenas no nó principal
+      - "8000:8000"
+    environment:
+      RABBITMQ_HOST: host.docker.internal
+      RABBITMQ_QUEUE: sensor_data_queue
+    depends_on:
+      - rabbitmq
+      - mongo
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: fazenda
+      RABBITMQ_DEFAULT_PASS: steffenthanos2020
+
+  mongo:
+    image: mongo
+    container_name: mongodb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: maidai
+      MONGO_INITDB_ROOT_PASSWORD: 123maidai456
+    ports:
+      - "27017:27017"

@@ -1,20 +1,20 @@
-# Base image with Python
-FROM python:3.9-slim
+# Usar uma imagem base do Python
+FROM python:3.11-slim
 
-# Set the working directory
+# Definir o diretório de trabalho dentro do container
 WORKDIR /app
 
-# Copy requirements (we will define it later)
-COPY requirements.txt requirements.txt
+# Copiar o arquivo requirements.txt para o diretório de trabalho
+COPY requirements.txt .
 
-# Install dependencies
+# Instalar as dependências
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the application files
+# Copiar todos os arquivos do projeto para o diretório de trabalho
 COPY . .
 
-# Expose the FastAPI port
+# Expor a porta 8000 para acessar o FastAPI
 EXPOSE 8000
 
-# Command to run the application
-CMD ["uvicorn", "sensor:app", "--host", "0.0.0.0", "--port", "8000"]
+# Comando para rodar a aplicação
+CMD ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "8000"]
