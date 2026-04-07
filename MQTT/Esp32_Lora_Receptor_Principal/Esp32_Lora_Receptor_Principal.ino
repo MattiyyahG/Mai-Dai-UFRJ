@@ -42,9 +42,12 @@ PubSubClient client(espClient);
 // -------- Variáveis --------
 float umidade, temperatura, ph;
 int condutividade, nitrogenio, fosforo, potassio;
+int contadorZero = 0;        
+const int limiteZero = 3;    
 
 String dataAtual = "";
 String horaAtual = "";
+String t_stemp = "";
 
 // ================= SETUP =================
 void setup() {
@@ -102,29 +105,75 @@ void loop() {
   int estado = radio.receive(mensagem);
 
   if (estado == RADIOLIB_ERR_NONE) {
-    Serial.println("Recebido:");
-    Serial.println(mensagem);
-
     processarJSON(mensagem);
     atualizarDataHora();
     mostrarOLED();
     enviarRabbitMQ();
+
+    bool dadosZerados = (umidade == 0 && temperatura == 0 &&
+                         condutividade == 0 && ph == 0 &&
+                         nitrogenio == 0 && fosforo == 0 && potassio == 0);
+
+    if (dadosZerados) {
+      contadorZero++;
+      Serial.print("Dados zerados! Contagem: ");
+      Serial.println(contadorZero);
+
+      if (contadorZero >= limiteZero) {
+        Serial.println("Limite atingido — reiniciando...");
+        display.clearDisplay();
+        display.setCursor(0, 0);
+        display.println("Dados zerados!");
+        display.println("Reiniciando...");
+        display.display();
+        delay(2000);
+        ESP.restart(); // Reinicia o ESP32
+      }
+    } else {
+      contadorZero = 0; // Dados válidos — zera o contador
+    }
   }
 }
+// -------- WIFI --------
+const char* redes[][2] = {
+  {"Lab_3D",        "l4bn3t00"},
+  {"POCO X7",    "87645321"},
+  {"wPESC-Visitante",   ""}
+};
+const int totalRedes = 3;
 
-// ================= WIFI =================
 void conectarWiFi() {
-  Serial.print("Conectando WiFi...");
-  WiFi.begin(ssid, password);
+  for (int i = 0; i < totalRedes; i++) {
+    Serial.print("Tentando: ");
+    Serial.println(redes[i][0]);
 
-  while (WiFi.status() != WL_CONNECTED) {
+    display.clearDisplay();
+    display.setCursor(0, 0);
+    display.print("WiFi: ");
+    display.println(redes[i][0]);
+    display.display();
+
+    WiFi.begin(redes[i][0], redes[i][1]);
+
+    int tentativas = 0;
+    while (WiFi.status() != WL_CONNECTED && tentativas < 20) {
+      delay(500);
+      Serial.print(".");
+      tentativas++;
+    }
+
+    if (WiFi.status() == WL_CONNECTED) {
+      Serial.println("Conectado!");
+      return; // Para na primeira que conectar
+    }
+
+    Serial.println("Falhou, tentando próxima...");
+    WiFi.disconnect();
     delay(500);
-    Serial.print(".");
   }
 
-  Serial.println("OK!");
+  Serial.println("Nenhuma rede encontrada!");
 }
-
 // ================= MQTT =================
 void conectarMQTT() {
   while (!client.connected()) {
@@ -171,12 +220,17 @@ void atualizarDataHora() {
 
   char dataStr[11];
   char horaStr[9];
+  char horaData[21];
+  
+//%Y-%m-%dT%H:%M:%S
 
   strftime(dataStr, sizeof(dataStr), "%d/%m/%Y", &timeinfo);
   strftime(horaStr, sizeof(horaStr), "%H:%M:%S", &timeinfo);
+  strftime(horaData, sizeof(horaData), "%Y-%m-%dT%H:%M:%S", &timeinfo);
 
   dataAtual = String(dataStr);
   horaAtual = String(horaStr);
+  t_stemp = String(horaData);
 }
 
 // ================= OLED =================
@@ -199,9 +253,9 @@ void mostrarOLED() {
   display.print(" K:"); display.println(potassio);
 
   display.setCursor(0, 52);
-  display.print(dataAtual);
+  display.print(t_stemp);
   display.print(" ");
-  display.print(horaAtual);
+//  display.print(horaAtual);
 
   display.display();
 }
@@ -209,8 +263,8 @@ void mostrarOLED() {
 // ================= ENVIO RABBITMQ =================
 void enviarRabbitMQ() {
   StaticJsonDocument<256> doc;
-  int id_sensor = 1;
-  doc["id_sensor"] = id_sensor;
+  doc["id_sensor"] = "1";
+  doc["timestamp"] = t_stemp;
   doc["data"] = dataAtual;
   doc["hora"] = horaAtual;
   doc["umidade"] = umidade;
